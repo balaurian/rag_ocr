@@ -11,15 +11,14 @@ import pandas as pd
 
 OPEN_API_KEY = os.getenv("OPENAI_API_KEY")
 
-#input = "app/data/receipt-template-en-neat-750px.png"
 input           = "app/data/receipt-template-en-neat-750px.png"
-output          = "app/data/output.txt"
+out_ocr         = "app/data/output.txt"
 
-def ocr(input, output):
+def ocr(input, out_ocr):
     img = cv2.imread(input)
 
     # instance text detector
-    reader = easyocr.Reader(['en'], gpu=False)
+    reader = easyocr.Reader(['en'], gpu=True)
 
     # detect text on image
     text_ = reader.readtext(img)
@@ -28,7 +27,7 @@ def ocr(input, output):
     for i in range(0,len(text_)):
         text_from_image.append(text_[i][1])
 
-    with open(output, "w") as txt_file:
+    with open(out_ocr, "w") as txt_file:
         for line in text_from_image:
             txt_file.write(line + "\n")
 
@@ -49,14 +48,14 @@ parser = StrOutputParser()
 
 chain = prompt | model | parser
 
-if not os.path.exists(output):
+if not os.path.exists(out_ocr):
     print ("\nNo text from image detected, proceeding to ocr ...\n")
-    ocr(input,output)
+    ocr(input,out_ocr)
 
 print ("\nproceeding to read text file ...\n")
 
 try:    
-    with open(output) as file:
+    with open(out_ocr) as file:
         transcription = file.read()
 
 except Exception as err:
@@ -93,7 +92,7 @@ def list_cleaner(list_to_clean):
     return list_to_clean
 
 try:
-    ask_name = "Where is the receipt from? Output simply the name, I need to store it in a Python string variable"
+    ask_name = "Where is the receipt from? Output simply the name, no explanatory text, I need to store the output in a Python string variable"
     name = invoker(chain, transcription, ask_name)
     print("name: ", name)
     
@@ -128,18 +127,16 @@ try:
     tax = invoker(chain, transcription, ask_tax)
     print("tax: ", tax)
 
-    format_lists = [name, date, items[0], quantity[0], items_price[0], subtotal, tax]
-    receipt_dataframe = pd.DataFrame([format_lists], columns = ["name", "date", "items","quantity","price", "subtotal", "tax"] )
-
-    if len(items)>1:
-        for i in range(1, len(items)):
-            new_row = [{"items":items[i], "quantity":quantity[i], "price":items_price[i]}]
-            #receipt_dataframe = pd.DataFrame(new_row, ignore_index=True )
+    if items:
+        dataframe_list = []
+        for i in range(0,len(items)):
+            if i==0:
+                dataframe_list.append([items[i],quantity[i],items_price[i], subtotal, tax])
             
-            #df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-            #receipt_dataframe = receipt_dataframe.append(new_row, ignore_index=True )
-            #receipt_dataframe = pd.concat([receipt_dataframe, pd.DataFrame([new_row])], ignore_index=True )
-
+            else:
+                dataframe_list.append([items[i],quantity[i],items_price[i]])
+                
+        receipt_dataframe = pd.DataFrame(dataframe_list, columns = ["items","quantity","price", "subtotal", "tax"] )
     
     #format name and date for csv writing
     formated_name = ''.join(n for n in name if n.isalnum())
