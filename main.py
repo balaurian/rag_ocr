@@ -11,7 +11,8 @@ import pandas as pd
 
 OPEN_API_KEY = os.getenv("OPENAI_API_KEY")
 
-input           = "app/data/receipt-template-en-neat-750px.png"
+#input           = "app/data/receipt-template-en-neat-750px.png"
+input           = "app/data/alpha.jpg"
 out_ocr         = "app/data/output.txt"
 
 def ocr(input, out_ocr):
